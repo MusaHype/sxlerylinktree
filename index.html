@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>@sxlery</title>
+<link rel="icon" href="https://img001.prntscr.com/file/img001/k1Xjr7vCQRqP_XQLpBAMZw.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Genel Sayfa Ayarları */
+body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    background: url('https://img001.prntscr.com/file/img001/3Dd6pYZ-QxOGEGjWNJWQpg.jpg') no-repeat center center/cover fixed;
+    font-family: 'Poppins', sans-serif; /* Modern font */
+    overflow: hidden;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Giriş Katmanı (Enter Overlay) */
+#enterOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 4rem;
+    color: #f0f0f0;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 1000;
+    transition: opacity 0.6s ease-out;
+    text-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+#enterOverlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+#enterOverlay:hover {
+    color: #ffffff;
+    text-shadow: 0 7px 20px rgba(0, 0, 0, 0.7);
+}
+
+
+/* Lanyard (Discord Profil Kartı) Konteynerı */
+#lanyardContainer {
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.8s ease-in;
+    position: relative;
+}
+#lanyardContainer.visible {
+    opacity: 1;
+}
+#lanyardContainer img {
+    width: 500px; /* Büyütülmüş lanyard genişliği */
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+#lanyardContainer img:hover { /* Lanyard'ın üzerine gelince büyüme ve gölge efekti */
+    transform: scale(1.03);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
+}
+
+/* Lanyard konteynerının üzerine gelince Profile Views'ın tepkisi */
+#lanyardContainer:hover #currentView {
+    transform: translateY(0) scale(1.05); /* Lanyard büyürken Profile Views da hafifçe büyüsün */
+    background-color: rgba(0, 0, 0, 0.75); /* Hafif renk değişimi */
+    box-shadow: 
+        5px 5px 15px rgba(0, 0, 0, 0.6), 
+        -5px -5px 15px rgba(255, 255, 255, 0.08); /* Hafif gölge değişimi */
+}
+
+
+/* Ses Kontrolü Ana Konteyner */
+#soundWrapper {
+    position: fixed;
+    top: 25px;
+    left: 25px;
+    z-index: 101;
+    display: none;
+    align-items: center;
+    gap: 15px;
+}
+#soundWrapper.visible {
+    display: flex;
+}
+
+/* Ses Kontrol Kutusu - Modern/Neumorphic Design */
+#soundControlBox {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 30px;
+    padding: 10px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 
+        5px 5px 15px rgba(0, 0, 0, 0.5),
+        -5px -5px 15px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    transition: all 0.3s ease;
+    min-width: 200px;
+    height: 45px;
+}
+
+#soundControlBox:hover {
+    background: rgba(0, 0, 0, 0.7);
+    box-shadow: 
+        8px 8px 20px rgba(0, 0, 0, 0.6),
+        -8px -8px 20px rgba(255, 255, 255, 0.08);
+}
+
+/* Ses İkonu Konteynerı (SVGleri tutan) */
+#volumeIcon {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    display: flex; /* SVG'leri hizalamak için flex kullanıyoruz */
+    justify-content: center;
+    align-items: center;
+}
+#volumeIcon svg {
+    position: absolute; /* Üst üste binmeleri için absolute */
+    width: 100%;
+    height: 100%;
+    fill: currentColor; /* SVG'nin rengini parent'ın color özelliği ile yönet */
+    color: #e0e0e0;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    opacity: 0; /* Başlangıçta hepsi gizli */
+}
+#volumeIcon:hover svg {
+    transform: scale(1.15);
+}
+
+/* Sadece aktif ikon görünür olsun */
+#volumeIcon svg.active {
+    opacity: 1;
+}
+
+/* Ses Slider'ı - Modern, minimal */
+#volumeSlider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 140px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+/* Webkit Slider Track */
+#volumeSlider::-webkit-slider-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+/* Webkit Slider Thumb - Modern daire */
+#volumeSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, #a8c0ff, #3f5573);
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+    margin-top: -6px;
+}
+
+#volumeSlider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 1px 4px rgba(255, 255, 255, 0.4);
+}
+
+#volumeSlider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.05);
+}
+
+/* Mozilla Firefox için */
+#volumeSlider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, #a8c0ff, #3f5573);
+    border: none;
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.3);
+}
+
+#volumeSlider::-moz-range-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+/* Filled portion of slider */
+#volumeSlider {
+    background: linear-gradient(to right, 
+        #a8c0ff 0%,
+        #3f5573 var(--slider-progress, 50%),
+        rgba(255, 255, 255, 0.2) var(--slider-progress, 50%), 
+        rgba(255, 255, 255, 0.2) 100%);
+}
+
+/* Kar Animasyonu İçin Canvas */
+#snowCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* Current View Konteynerı - Lanyard'ın içinde modern sayaç */
+#currentView {
+    position: absolute; 
+    bottom: 15px; /* Lanyard'ın alt kenarından uzaklık */
+    right: 15px; /* Lanyard'ın sağ kenarından uzaklık */
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 20px;
+    padding: 8px 15px;
+    color: #f0f0f0;
+    font-size: 1rem;
+    box-shadow: 
+        3px 3px 10px rgba(0, 0, 0, 0.4), 
+        -3px -3px 10px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    opacity: 0; 
+    transform: translateY(15px); 
+    z-index: 101; 
+    width: max-content; 
+    white-space: nowrap; 
+    cursor: default; 
+    display: flex; 
+    align-items: center; 
+    height: 35px;
+    /* Transition'a tüm efektleri ekledik, böylece hem kendi hover'ı hem de lanyard'ın hover'ı pürüzsüz olur */
+    transition: opacity 0.5s ease-in, transform 0.5s ease-in, background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#currentView.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Göz ikonu (SVG) ve sayı */
+#currentView .icon-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex; 
+    align-items: center;
+    gap: 8px;
+}
+#currentView .icon-text svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+/* Hover'da yukarıda belirecek "Profile Views" baloncuk (Geri getirildi) */
+#currentView::before {
+    content: "Profile Views";
+    position: absolute;
+    bottom: 100%; 
+    left: 50%; 
+    transform: translateX(-50%) translateY(-12px);
+    background: rgba(0, 0, 0, 0.85); 
+    color: #f0f0f0;
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0; 
+    pointer-events: none; 
+    transition: opacity 0.3s ease, transform 0.3s ease; 
+    z-index: 10; 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+}
+
+/* Kendi üzerine gelindiğinde baloncuk göster (Geri getirildi) */
+#currentView:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0px);
+}
+
+/* Kendi üzerine gelindiğinde ana kutucuğun rengi değişsin (Geri getirildi) */
+#currentView:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+
+/* Sosyal Medya Linkleri Konteynerı */
+#socialLinks {
+    position: fixed;
+    bottom: 40px; /* Sayfanın altından 40px yukarıda */
+    left: 50%; /* Yatayda ortalamak için */
+    transform: translateX(-50%); /* Kendi genişliğinin yarısı kadar sola kaydırarak tam ortalama */
+    z-index: 100;
+    display: flex;
+    gap: 20px;
+    opacity: 0; /* Başlangıçta gizli */
+    transition: opacity 0.8s ease-in, transform 0.8s ease-in; /* Animasyon için */
+}
+
+#socialLinks.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0); /* Görünür olduğunda eski haline döner */
+}
+
+/* YouTube Buton Stili */
+.youtube-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 25px;
+    background: linear-gradient(135deg, #FF0000, #CC0000); /* YouTube kırmızısı */
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(255, 0, 0, 0.4);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+}
+
+.youtube-button:hover {
+    background: linear-gradient(135deg, #CC0000, #990000);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(255, 0, 0, 0.6);
+}
+
+.youtube-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.3);
+}
+
+</style>
+</head>
+<body>
+
+<div id="enterOverlay">Enter to view</div>
+
+<div id="lanyardContainer">
+    <a href="https://discord.com/users/1240779282683269214" target="_blank" rel="noopener noreferrer">
+        <img src="https://lanyard.cnrad.dev/api/1240779282683269214?hideBadges=true&ignoreAppId=1240779282683269214" alt="Discord Profil Kartı" />
+    </a>
+    <div id="currentView">
+        <span class="icon-text">
+            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+            <span id="viewCount">0</span>
+        </span>
+    </div>
+</div>
+
+<div id="socialLinks">
+    <a href="https://www.youtube.com/@sxlery00" target="_blank" rel="noopener noreferrer" class="youtube-button">
+        YouTube
+    </a>
+</div>
+
+<div id="soundWrapper" aria-label="Ses kontrolü" role="region">
+<div id="soundControlBox">
+    <div id="volumeIcon" title="Sesi Kapat/Aç">
+        <svg id="volumeUpIcon" class="active" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.81 5 3.54 5 6.71s-2.11 5.9-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+        <svg id="volumeDownIcon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+            <path d="M5 9v6h4l5 5V4L9 9H5zm10.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+        </svg>
+        <svg id="volumeOffIcon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor">
+            <path d="M0 0h24v24H0z" fill="none"/>
+            <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .96-.23 1.86-.65 2.68l1.64 1.64c.83-1.48 1.51-3.21 1.51-4.32a9.974 9.974 0 00-3.34-7.86L18.5 7.18c.6.61 1 1.45 1 2.32zm-3.15 2.11L12 11.23V15.5c1.48-.73 2.5-2.25 2.5-4.02v-.77l1.65 1.66zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.28 4.28c-.9.69-1.95 1.13-3.04 1.33v2.06c1.8-.31 3.39-1.11 4.72-2.39L19.73 21 21 19.73l-9-9L4.27 3z"/>
+        </svg>
+    </div>
+    <input type="range" id="volumeSlider" min="0" max="100" value="50" title="Ses Seviyesi">
+</div>
+</div>
+
+
+<audio id="backgroundAudio" loop preload="auto" src="https://audio.jukehost.co.uk/Lcd75YWHONyMYKCtYE0bizvqWNZMdCWv"></audio>
+
+<canvas id="snowCanvas"></canvas>
+
+<script>
+// DOM elementlerini seçme
+const enterOverlay = document.getElementById('enterOverlay');
+const lanyardContainer = document.getElementById('lanyardContainer');
+const soundWrapper = document.getElementById('soundWrapper');
+const soundControlBox = document.getElementById('soundControlBox');
+const backgroundAudio = document.getElementById('backgroundAudio');
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeIconContainer = document.getElementById('volumeIcon'); // İkonların kapsayıcısı
+const volumeUpIcon = document.getElementById('volumeUpIcon');
+const volumeDownIcon = document.getElementById('volumeDownIcon');
+const volumeOffIcon = document.getElementById('volumeOffIcon');
+const canvas = document.getElementById('snowCanvas');
+const ctx = canvas.getContext('2d');
+
+// Profile Views için DOM seçimi
+const currentViewElement = document.getElementById('currentView'); 
+const viewCountSpan = document.querySelector('#currentView .icon-text span');
+
+// Social Links için DOM seçimi
+const socialLinksContainer = document.getElementById('socialLinks');
+
+
+// Kar animasyonu değişkenleri
+let width, height;
+let particles = [];
+const maxParticles = 150;
+let globalWind = 0;
+let windChange = 0;
+
+// Canvas boyutunu ayarlama
+function resizeCanvas() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Kar tanesi sınıfı
+class Snowflake {
+    constructor() { this.reset(); }
+    reset() {
+        this.radius = Math.random() * 2.5 + 1;
+        this.opacity = this.radius / 3.5;
+        this.speed = this.radius * 0.4 + 0.2;
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.sway = Math.random() * 0.8 + 0.4;
+        this.angle = Math.random() * Math.PI * 2;
+    }
+    update() {
+        this.angle += 0.02;
+        this.x += Math.sin(this.angle) * this.sway + globalWind;
+        this.y += this.speed;
+
+        if (this.y > height + this.radius) { this.reset(); this.y = -this.radius; }
+        if (this.x > width + this.radius) this.x = -this.radius;
+        if (this.x < -this.radius) this.x = width + this.radius;
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+        ctx.shadowColor = 'white';
+        ctx.shadowBlur = 5;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// Kar tanelerini oluştur
+for(let i = 0; i < maxParticles; i++) { particles.push(new Snowflake()); }
+
+// Fare etkileşimi
+let mouse = { x: -1000, y: -1000, radius: 80 };
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mouseout', () => { mouse.x = -1000; mouse.y = -1000; });
+
+// Kar animasyon döngüsü
+function animateSnow() {
+    ctx.clearRect(0, 0, width, height);
+    windChange += 0.002;
+    globalWind = Math.sin(windChange) * 0.3;
+
+    particles.forEach(p => {
+        let dx = p.x - mouse.x;
+        let dy = p.y - mouse.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if(dist < mouse.radius) {
+            let force = (mouse.radius - dist) / mouse.radius;
+            let angle = Math.atan2(dy, dx);
+            p.x += Math.cos(angle) * force * (5 / p.radius);
+            p.y += Math.sin(angle) * force * (5 / p.radius);
+        }
+        p.update();
+        p.draw();
+    });
+    requestAnimationFrame(animateSnow);
+}
+animateSnow();
+
+// Sayfa etkinleştirme
+enterOverlay.addEventListener('click', activateView);
+document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.code === 'Enter') {
+        activateView();
+    }
+});
+
+function activateView() {
+    enterOverlay.classList.add('hidden');
+    enterOverlay.addEventListener('transitionend', () => {
+        enterOverlay.style.display = 'none';
+    }, { once: true });
+
+    lanyardContainer.classList.add('visible');
+    soundWrapper.classList.add('visible');
+    currentViewElement.classList.add('visible'); // Profile Views'ı görünür yap
+    socialLinksContainer.classList.add('visible'); // YouTube butonunu görünür yap
+
+    backgroundAudio.volume = 0.5;
+    volumeSlider.value = 50;
+    backgroundAudio.muted = false;
+    
+    updateSoundIcons();
+
+    backgroundAudio.play().catch(error => {
+        console.warn('Audio autoplay prevented:', error);
+        backgroundAudio.muted = true; // Otomatik oynatma engellenirse sesi kapat
+        updateSoundIcons();
+    });
+
+    // Profile Views Sayacını Başlat
+    incrementViewCount();
+}
+
+// Ses slider olay dinleyicisi
+volumeSlider.addEventListener('input', (e) => {
+    const newVolume = e.target.value / 100;
+    backgroundAudio.volume = newVolume;
+    backgroundAudio.muted = newVolume === 0;
+    updateSoundIcons();
+});
+
+// Ses ikonuna tıklama
+volumeIconContainer.addEventListener('click', () => {
+    backgroundAudio.muted = !backgroundAudio.muted;
+    if (!backgroundAudio.muted && backgroundAudio.volume === 0) {
+        backgroundAudio.volume = 0.5; // Mute'dan çıkınca ses seviyesi sıfırsa bir değer ver
+        volumeSlider.value = 50;
+    }
+    updateSoundIcons();
+});
+
+// Ses ikonlarını güncelleme
+function updateSoundIcons() {
+    // Tüm ikonları gizle
+    volumeUpIcon.classList.remove('active');
+    volumeDownIcon.classList.remove('active');
+    volumeOffIcon.classList.remove('active');
+
+    const volume = backgroundAudio.volume;
+    
+    if (backgroundAudio.muted || volume === 0) {
+        volumeOffIcon.classList.add('active');
+    } else if (volume < 0.5) { // 0.5'in altı kısık ses olsun
+        volumeDownIcon.classList.add('active');
+    } else {
+        volumeUpIcon.classList.add('active');
+    }
+    
+    // Slider'ın dolu kısmını güncelle
+    const progress = backgroundAudio.muted ? 0 : volume * 100;
+    volumeSlider.style.setProperty('--slider-progress', `${progress}%`);
+    
+    if (!backgroundAudio.muted) {
+        volumeSlider.value = volume * 100;
+    }
+}
+
+// Başlangıçta güncelle
+updateSoundIcons();
+
+// Pencere başlığı animasyonu
+let titleText = '@sxlery';
+let titleIndex = titleText.length;
+let increasing = false;
+function animateTitle() {
+    if (!increasing) {
+        titleIndex--;
+        if (titleIndex <= 1) increasing = true;
+    } else {
+        titleIndex++;
+        if (titleIndex >= titleText.length) increasing = false;
+    }
+    document.title = titleText.substring(0, titleIndex);
+}
+setInterval(animateTitle, 300);
+
+// Profile Views Fonksiyonları
+function incrementViewCount() {
+    let savedViewCount = localStorage.getItem('sxlery_profile_view_count');
+    if (savedViewCount) {
+        viewCounter = parseInt(savedViewCount) + 1;
+    } else {
+        viewCounter = 1;
+    }
+    localStorage.setItem('sxlery_profile_view_count', viewCounter);
+    viewCountSpan.textContent = viewCounter;
+}
+</script>
+
+</body>
+</html>
